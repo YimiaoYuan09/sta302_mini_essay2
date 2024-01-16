@@ -1,0 +1,121 @@
+---
+title: "Explore Parks Drinking Water Sources in Toronto"
+author: "Yimiao Yuan"
+format: html
+---
+
+```{r}
+#### Preamble ####
+# Purpose: Get data on Parks Drinking Water Source and make
+# a graph of the number of parks for each source type
+# Author: Yimiao Yuan
+# Email: yymlinda.yuan@mail.utoronto.ca
+# Date: 16 January 2024
+# Prerequisites: -
+```
+
+```{r}
+#### Workspace setup ####
+install.packages("tidyverse")
+install.packages("opendatatoronto")
+```
+
+```{r}
+# load the library
+library(opendatatoronto)
+library(tidyverse)
+```
+
+```{r}
+# Get dataset from opentoronto source
+# Choose the Parks Drinking Water Sources
+# Get id and source from "For Developers" tab
+
+# get package
+package <- show_package("f614d4d3-594a-4f78-8473-faaa17269c67")
+ 
+# get all resources for this package
+resources <- list_package_resources("f614d4d3-594a-4f78-8473-faaa17269c67")
+ 
+# identify datastore resources; by default, Toronto Open Data sets datastore resource format to CSV for non-geospatial and GeoJSON for geospatial resources
+datastore_resources <- filter(resources, tolower(format) %in% c('csv', 'geojson'))
+ 
+# load the first datastore resource as a sample
+raw_water_resource_data <- filter(datastore_resources, row_number()==1) %>% get_resource()
+
+raw_water_resource_data
+```
+
+```{r}
+# write to csv file to save the raw data
+write_csv(
+  x = raw_water_resource_data,
+  file = "raw_water_resource_data.csv"
+)
+```
+
+```{r}
+# take a look at the data
+head(raw_water_resource_data)
+```
+
+```{r}
+# get all the column names
+names(raw_water_resource_data)
+```
+
+```{r}
+# only insterested in: "id", "type"
+# clean the data and rewrite the column name
+water_resource_clean <-
+  raw_water_resource_data |>
+  rename(park_id = id, resource_type = type) |>
+  select(park_id, resource_type)
+
+head(water_resource_clean)
+```
+
+```{r}
+# Look at the unique values in resource_type
+water_resource_clean$resource_type |>
+  unique()
+```
+
+```{r}
+# rewrite the data: each row contains only 1 resource type
+water_resource_clean <-
+  water_resource_clean |>
+  separate_longer_delim(resource_type, delim = ", ")
+
+head(water_resource_clean)
+```
+
+```{r}
+# check again make sure each row only contains 1 type
+water_resource_clean$resource_type |>
+  unique()
+```
+
+```{r}
+# Save the cleaned dataset
+write_csv(
+  x = water_resource_clean,
+  file = "cleaned_water_resource.csv"
+)
+```
+
+```{r}
+# count number of parks for each resource type
+water_resource_clean |>
+  count(resource_type)
+```
+
+```{r}
+# build the graph, create the label and make it clean
+water_resource_clean |>
+  ggplot(aes(x = resource_type)) + 
+  geom_bar() +
+  theme_minimal() +
+  labs(x = "Water Resource Type", y = "Number of parks")
+```
+
